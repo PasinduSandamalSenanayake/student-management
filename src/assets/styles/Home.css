@@ -1,7 +1,7 @@
 /* Home.css */
 .home-container {
     display: flex;
-    justify-content: center;
+    justify-content: space-evenly;
     align-items: start;
     padding: 40px;
     gap: 40px;
