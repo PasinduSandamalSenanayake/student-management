@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import '../../assets/styles/AdminHome.css';
 import AdminDashboard from "./AdminDashboard"; 
+import AdminCourse from "./AdminCourse";
+import AdminStudent from "./AdminStudent";
+import AdminModule from "./AdminModule";
 
 const AdminHome = () => {
   const [selectedSection, setSelectedSection] = useState("Dashboard");
@@ -9,40 +12,27 @@ const AdminHome = () => {
     switch (selectedSection) {
       case "Dashboard":
         return <AdminDashboard/>;
-        
+
       case "Course":
-        return (
-          <div className="section-content">
-            <h2>Courses</h2>
-            <p>Here you can manage your course details.</p>
-            {/* Add course management components here */}
-          </div>
-        );
+        return <AdminCourse/>;
+
       case "Students":
+        return <AdminStudent/>;
+
+      case "Payment":
         return (
           <div className="section-content">
-            <h2>Students</h2>
-            <p>Manage student records and enrollments.</p>
-          </div>
-        );
-      case "Billing":
-        return (
-          <div className="section-content">
-            <h2>Billing</h2>
+            <h2>Payment</h2>
             <p>View and manage billing details.</p>
           </div>
         );
       case "Module":
+        return <AdminModule/>;
+        
+      case "Results":
         return (
           <div className="section-content">
-            <h2>Modules</h2>
-            <p>Create and edit module content.</p>
-          </div>
-        );
-      case "Exams":
-        return (
-          <div className="section-content">
-            <h2>Exams</h2>
+            <h2>Results</h2>
             <p>Setup and manage exams for students.</p>
           </div>
         );
@@ -56,7 +46,7 @@ const AdminHome = () => {
       <aside className="sidebar">
         <div className="logo">Edurise</div>
         <nav className="nav-links">
-          {["Dashboard", "Course", "Students", "Billing", "Module", "Exams"].map(item => (
+          {["Dashboard", "Course", "Students", "Payment", "Module", "Results"].map(item => (
             <a
               key={item}
               href="#"
