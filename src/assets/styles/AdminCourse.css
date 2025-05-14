@@ -140,4 +140,21 @@
     border-radius: 6px;
     cursor: pointer;
   }
+
+  .scrollable-list {
+    max-height: 400px; /* Adjust based on your layout */
+    overflow-y: auto;
+    padding-right: 10px; /* To avoid content hiding behind scrollbar */
+  }
+  
+  /* Optional: for consistent scrollbar appearance */
+  .scrollable-list::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .scrollable-list::-webkit-scrollbar-thumb {
+    background-color: #ccc;
+    border-radius: 4px;
+  }
+  
   

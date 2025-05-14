@@ -1,8 +1,35 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import "../../assets/styles/AdminDashboard.css";
 import { FaUserGraduate, FaChalkboardTeacher, FaUserTie } from "react-icons/fa";
 
 const AdminDashboard = () => {
+  const [totalCourses, setTotalCourses] = useState(0);
+
+  useEffect(() => {
+    const fetchCourseCount = async () => {
+      try {
+        const token = localStorage.getItem("token");
+
+        const response = await fetch("http://localhost:5000/api/courses/count", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setTotalCourses(data.totalCourses);
+        } else {
+          console.error("Failed to fetch course count");
+        }
+      } catch (error) {
+        console.error("Error fetching course count:", error);
+      }
+    };
+
+    fetchCourseCount();
+  }, []);
+
   return (
     <div className="dashboard-cards-container">
       <div className="dashboard-card orange">
@@ -15,7 +42,7 @@ const AdminDashboard = () => {
 
       <div className="dashboard-card purple">
         <div className="card-content">
-          <h2>18</h2>
+          <h2>{totalCourses}</h2>
           <p>Courses</p>
         </div>
         <FaChalkboardTeacher className="card-icon" />
