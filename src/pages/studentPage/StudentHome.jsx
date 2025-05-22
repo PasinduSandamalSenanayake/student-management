@@ -1,12 +1,13 @@
-// src/pages/StudentHome.jsx
 import React, { useState } from 'react';
 import '../../assets/styles/StudentHome.css';
 import Module from './Module';
 import Result from './Result';
+import PaymentPopup from './Payment'; // 👈 Import here
 
 const StudentHome = () => {
     const [showModules, setShowModules] = useState(false);
     const [showResults, setShowResults] = useState(false);
+    const [showPayment, setShowPayment] = useState(false); // 👈 State for payment popup
 
     const handleLogout = () => {
         window.location.href = '/';
@@ -35,14 +36,15 @@ const StudentHome = () => {
                     <p>Track your academic progress here.</p>
                 </div>
 
-                <div className="widget">
-                    <h3>Support</h3>
-                    <p>Get help or contact your instructors.</p>
+                <div className="widget" onClick={() => setShowPayment(true)}> {/* 👈 Show payment popup */}
+                    <h3>Payment</h3>
+                    <p>Your payment Details here.</p>
                 </div>
             </section>
 
             {showModules && <Module onClose={() => setShowModules(false)} />}
             {showResults && <Result onClose={() => setShowResults(false)} />}
+            {showPayment && <PaymentPopup onClose={() => setShowPayment(false)} />} {/* 👈 Payment popup */}
         </div>
     );
 };

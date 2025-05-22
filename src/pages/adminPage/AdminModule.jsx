@@ -1,24 +1,47 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaEdit, FaTrash } from "react-icons/fa";
 import "../../assets/styles/AdminModule.css";
+import axios from "axios";
 
 const AdminModule = () => {
-  const [modules, setModules] = useState([
-    { id: 1, course: "Mathematics", moduleName: "Algebra" },
-    { id: 2, course: "Sciences", moduleName: "Tree" },
-  ]);
-
+  const [modules, setModules] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ course: "", moduleName: "" });
   const [editingModuleId, setEditingModuleId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [courseOptions, setCourseOptions] = useState([]);
 
-  const courseOptions = ["Mathematics", "Science", "History", "ICT", "English"];
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const response = await axios.get("http://localhost:5000/api/courses");
+        setCourseOptions(response.data);
+      } catch (error) {
+        console.error("Error fetching courses:", error);
+      }
+    };
+
+    const fetchModules = async () => {
+      try {
+        const response = await axios.get("http://localhost:5000/api/modules");
+        const modulesWithCourseName = response.data.map((module) => ({
+          ...module,
+          courseName: module.courseId?.name || "", // Extract course name
+        }));
+        setModules(modulesWithCourseName);
+      } catch (error) {
+        console.error("Error fetching modules:", error);
+      }
+    };
+
+    fetchCourses();
+    fetchModules();
+  }, []);
 
   const filteredModules = modules.filter(
     (module) =>
       module.moduleName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      module.course.toLowerCase().includes(searchQuery.toLowerCase())
+      module.courseName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleChange = (e) => {
@@ -26,31 +49,84 @@ const AdminModule = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleAddOrEditModule = () => {
+  const handleAddOrEditModule = async () => {
     if (formData.course && formData.moduleName) {
-      if (editingModuleId !== null) {
-        setModules(
-          modules.map((module) =>
-            module.id === editingModuleId
-              ? { id: editingModuleId, ...formData }
-              : module
-          )
-        );
-      } else {
-        setModules([...modules, { id: Date.now(), ...formData }]);
+      try {
+        if (editingModuleId !== null) {
+          // 🔁 Send PUT request to update module in backend
+          const response = await axios.put(
+            `http://localhost:5000/api/modules/${editingModuleId}`,
+            {
+              courseId: formData.course,
+              moduleName: formData.moduleName,
+            }
+          );
+
+          const updatedModule = response.data.updated;
+          const course = courseOptions.find((c) => c._id === formData.course);
+          updatedModule.courseName = course?.name || "";
+
+          setModules((prevModules) =>
+            prevModules.map((module) =>
+              module._id === editingModuleId
+                ? {
+                    ...module,
+                    moduleName: formData.moduleName,
+                    courseName:
+                      courseOptions.find((c) => c._id === formData.course)
+                        ?.name || "",
+                  }
+                : module
+            )
+          );
+        } else {
+          const response = await axios.post(
+            "http://localhost:5000/api/modules",
+            {
+              courseId: formData.course,
+              moduleName: formData.moduleName,
+            }
+          );
+
+          const newModule = response.data.module;
+          const course = courseOptions.find((c) => c._id === formData.course);
+          newModule.courseName = course?.name || "";
+
+          setModules((prevModules) => [...prevModules, newModule]);
+        }
+
+        resetForm();
+      } catch (error) {
+        console.error("Error saving module:", error);
+        alert("Failed to save module");
       }
-      resetForm();
     }
   };
 
   const handleEdit = (module) => {
-    setFormData(module);
-    setEditingModuleId(module.id);
+    setFormData({
+      course: module.courseId._id || module.courseId,
+      moduleName: module.moduleName,
+    });
+    setEditingModuleId(module._id);
     setShowModal(true);
   };
 
-  const handleDelete = (id) => {
-    setModules(modules.filter((module) => module.id !== id));
+  const handleDelete = async (id) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this module?"
+    );
+    if (!confirmDelete) return;
+
+    try {
+      await axios.delete(`http://localhost:5000/api/modules/${id}`);
+      setModules((prevModules) =>
+        prevModules.filter((module) => module._id !== id)
+      );
+    } catch (error) {
+      console.error("Error deleting module:", error);
+      alert("Failed to delete module");
+    }
   };
 
   const resetForm = () => {
@@ -87,11 +163,11 @@ const AdminModule = () => {
 
       <ul className="module-list">
         {filteredModules.map((module) => (
-          <li key={module.id} className="module-item">
+          <li key={module._id} className="module-item">
             <div className="module-info">
               <strong>{module.moduleName}</strong>
               <br />
-              <small>Course: {module.course}</small>
+              <small>Course: {module.courseName}</small>
             </div>
             <div className="module-actions">
               <FaEdit
@@ -99,7 +175,7 @@ const AdminModule = () => {
                 className="action-icon edit"
               />
               <FaTrash
-                onClick={() => handleDelete(module.id)}
+                onClick={() => handleDelete(module._id)}
                 className="action-icon delete"
               />
             </div>
@@ -111,18 +187,20 @@ const AdminModule = () => {
         <div className="modal-overlay">
           <div className="modal">
             <h3>{editingModuleId ? "Edit Module" : "Add New Module"}</h3>
+
             <select
               name="course"
               value={formData.course}
               onChange={handleChange}
             >
               <option value="">Select Course</option>
-              {courseOptions.map((course, idx) => (
-                <option key={idx} value={course}>
-                  {course}
+              {courseOptions.map((course) => (
+                <option key={course._id} value={course._id}>
+                  {course.name}
                 </option>
               ))}
             </select>
+
             <input
               type="text"
               name="moduleName"
@@ -130,6 +208,7 @@ const AdminModule = () => {
               onChange={handleChange}
               placeholder="Module Name"
             />
+
             <div className="modal-buttons">
               <button onClick={handleAddOrEditModule} className="modal-button">
                 {editingModuleId ? "Update" : "Add"}

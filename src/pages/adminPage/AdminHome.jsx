@@ -4,6 +4,8 @@ import AdminDashboard from "./AdminDashboard";
 import AdminCourse from "./AdminCourse";
 import AdminStudent from "./AdminStudent";
 import AdminModule from "./AdminModule";
+import AdminPayment from "./AdminPayment";
+import AdminResult from "./AdminResult"
 
 const AdminHome = () => {
   const [selectedSection, setSelectedSection] = useState("Dashboard");
@@ -20,22 +22,13 @@ const AdminHome = () => {
         return <AdminStudent/>;
 
       case "Payment":
-        return (
-          <div className="section-content">
-            <h2>Payment</h2>
-            <p>View and manage billing details.</p>
-          </div>
-        );
+        return <AdminPayment/>;
+        
       case "Module":
         return <AdminModule/>;
         
       case "Results":
-        return (
-          <div className="section-content">
-            <h2>Results</h2>
-            <p>Setup and manage exams for students.</p>
-          </div>
-        );
+        return <AdminResult/>
       default:
         return <div>Select a section to display content.</div>;
     }

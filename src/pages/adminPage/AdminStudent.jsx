@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { FaEdit, FaTrash } from "react-icons/fa";
 import "../../assets/styles/AdminStudent.css";
+import axios from "axios";
 
 const AdminStudent = () => {
   /* ────────────────────────────── STATE ────────────────────────────── */
@@ -8,6 +9,8 @@ const AdminStudent = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState(null);
+  const [courseOptions, setCourseOptions] = useState([]);
+  const [courseMap, setCourseMap] = useState({});
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -21,8 +24,6 @@ const AdminStudent = () => {
     parentName: "",
     image: null,
   });
-
-  const courses = ["Mathematics", "Science", "History", "ICT", "English"];
 
   /* ─────────────────────── FETCH STUDENTS ON MOUNT ─────────────────── */
   useEffect(() => {
@@ -62,7 +63,25 @@ const AdminStudent = () => {
       }
     };
 
+    const fetchCourses = async () => {
+      try {
+        const response = await axios.get("http://localhost:5000/api/courses");
+        setCourseOptions(response.data);
+
+        // Create a map of course ID to course name
+        const courseIdNameMap = {};
+        response.data.forEach((course) => {
+          courseIdNameMap[course._id] = course.name;
+        });
+        setCourseMap(courseIdNameMap);
+
+      } catch (error) {
+        console.error("Error fetching courses:", error);
+      }
+    };
+
     fetchStudents();
+    fetchCourses();
   }, []);
 
   /* ───────────────────────────── HANDLERS ──────────────────────────── */
@@ -88,7 +107,6 @@ const AdminStudent = () => {
       email,
     } = formData;
 
-    // Simple client‑side check
     if (
       !fullName ||
       !address ||
@@ -104,61 +122,81 @@ const AdminStudent = () => {
       return;
     }
 
-    /* ---------- EDIT (local only) ---------- */
-    if (editingStudentId !== null) {
-      setStudents((prev) =>
-        prev.map((st) =>
-          st.id === editingStudentId
-            ? { id: editingStudentId, ...formData }
-            : st
-        )
-      );
-      resetForm();
-      return;
-    }
+    const token = localStorage.getItem("token");
+    const body = new FormData();
+    body.append("fullName", fullName);
+    body.append("address", address);
+    body.append("course", course);
+    body.append("NIC", nic);
+    body.append("mobileNumber", mobile);
+    body.append("email", email);
+    body.append("username", username);
+    body.append("password", password);
+    body.append("parentName", parentName);
+    if (formData.image) body.append("image", formData.image);
 
-    /* ---------- ADD (POST to API) ---------- */
     try {
-      const body = new FormData();
-      body.append("fullname", fullName);
-      body.append("address", address);
-      body.append("course", course);
-      body.append("nic", nic);
-      body.append("mobileNumber", mobile);
-      body.append("email", email);
-      body.append("username", username);
-      body.append("password", password);
-      body.append("parentName", parentName);
-      if (formData.image) body.append("image", formData.image);
+      let res;
+      let data;
 
-      const token = localStorage.getItem("token");
-      const res = await fetch(
-        "http://localhost:5000/api/admin/create-student",
-        {
+      if (editingStudentId !== null) {
+        // ---------- PUT (Update) ----------
+        res = await fetch(
+          `http://localhost:5000/api/admin/students/${editingStudentId}`,
+          {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            body,
+          }
+        );
+        data = await res.json();
+
+        if (!res.ok) throw new Error(data.message || "Update failed");
+
+        alert("Student updated successfully");
+
+        // Update the student in state
+        setStudents((prev) =>
+          prev.map((st) =>
+            st.id === editingStudentId
+              ? {
+                  ...formData,
+                  id: editingStudentId,
+                  image:
+                    formData.image instanceof File
+                      ? URL.createObjectURL(formData.image)
+                      : st.image,
+                }
+              : st
+          )
+        );
+      } else {
+        // ---------- POST (Create) ----------
+        res = await fetch("http://localhost:5000/api/admin/create-student", {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
           body,
-        }
-      );
+        });
+        data = await res.json();
 
-      const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Creation failed");
 
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to create student");
+        alert("Student created successfully");
+
+        setStudents((prev) => [
+          ...prev,
+          {
+            id: data.student?._id || Date.now(),
+            ...formData,
+            image:
+              formData.image instanceof File
+                ? URL.createObjectURL(formData.image)
+                : null,
+          },
+        ]);
       }
-
-      alert("Student created successfully");
-
-      /* Option A: re‑fetch whole list
-         Option B: push new student locally (below)          */
-      setStudents((prev) => [
-        ...prev,
-        {
-          id: Date.now(), // placeholder; ideally use data._id from backend
-          ...formData,
-          image: formData.image ? URL.createObjectURL(formData.image) : null,
-        },
-      ]);
 
       resetForm();
     } catch (err) {
@@ -173,9 +211,36 @@ const AdminStudent = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (id) => {
-    // TODO: call DELETE /api/admin/students/:id if backend supports it
-    setStudents((prev) => prev.filter((st) => st.id !== id));
+  const handleDelete = async (id) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this student?"
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(
+        `http://localhost:5000/api/admin/students/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Delete failed");
+
+      // Remove from UI
+      setStudents((prev) => prev.filter((st) => st.id !== id));
+      alert("Student deleted successfully");
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Error deleting student");
+    }
   };
 
   const resetForm = () => {
@@ -240,7 +305,10 @@ const AdminStudent = () => {
               <div className="student-info">
                 <strong>{st.fullName}</strong>
                 <br />
-                <small>Course: {st.course}</small>
+                <small>
+                  Course: {courseMap[st.course] || "Unknown Course"}
+                </small>
+
                 <br />
                 <small>Mobile: {st.mobile}</small>
                 <br />
@@ -315,9 +383,9 @@ const AdminStudent = () => {
               onChange={handleChange}
             >
               <option value="">Select Course</option>
-              {courses.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              {courseOptions.map((course) => (
+                <option key={course._id} value={course._id}>
+                  {course.name}
                 </option>
               ))}
             </select>
