@@ -5,7 +5,7 @@ import "../../assets/styles/AdminModule.css";
 const AdminPayment = () => {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
-    id: null, // For tracking edit mode
+    id: null,
     userId: "",
     amount: "",
     status: "Pending",
@@ -17,6 +17,7 @@ const AdminPayment = () => {
   const [payments, setPayments] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [searchStudentText, setSearchStudentText] = useState("");
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -69,6 +70,7 @@ const AdminPayment = () => {
       paymentMethod: "",
       description: "",
     });
+    setSearchStudentText("");
     setShowModal(false);
   };
 
@@ -113,6 +115,7 @@ const AdminPayment = () => {
                 paymentMethod: "",
                 description: "",
               });
+              setSearchStudentText("");
               setShowModal(true);
             }}
           >
@@ -146,6 +149,7 @@ const AdminPayment = () => {
                     paymentMethod: payment.method,
                     description: payment.description,
                   });
+                  setSearchStudentText(payment.studentId?.fullName || "");
                   setShowModal(true);
                 }}
                 className="action-icon edit"
@@ -176,13 +180,12 @@ const AdminPayment = () => {
                     const data = await res.json();
                     console.log("Payment deleted:", data.message);
 
-                    // Remove the payment from the state list
                     setPayments((prev) =>
                       prev.filter((p) => p._id !== payment._id)
                     );
                   } catch (err) {
                     console.error("Error deleting payment:", err);
-                    alert("Error deleting payment"); // <--- This only runs if something goes wrong
+                    alert("Error deleting payment");
                   }
                 }}
                 className="action-icon delete"
@@ -197,18 +200,55 @@ const AdminPayment = () => {
           <div className="modal">
             <h3>{formData.id ? "Edit Payment" : "Add New Payment"}</h3>
 
-            <select
-              name="userId"
-              value={formData.userId}
-              onChange={handleChange}
-            >
-              <option value="">Select Student</option>
-              {students.map((student) => (
-                <option key={student._id} value={student._id}>
-                  {student.fullName}
-                </option>
-              ))}
-            </select>
+            {/* Autocomplete Text Field for Student Selection */}
+            <div className="autocomplete-container">
+              <input
+                type="text"
+                className="autocomplete-input"
+                placeholder="Search student..."
+                value={
+                  students.find((s) => s._id === formData.userId)?.fullName ||
+                  searchStudentText
+                }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSearchStudentText(value);
+                  const selectedStudent = students.find(
+                    (student) =>
+                      student.fullName.toLowerCase() === value.toLowerCase()
+                  );
+                  setFormData((prev) => ({
+                    ...prev,
+                    userId: selectedStudent ? selectedStudent._id : "",
+                  }));
+                }}
+              />
+              {searchStudentText && (
+                <ul className="autocomplete-suggestions">
+                  {students
+                    .filter((student) =>
+                      student.fullName
+                        .toLowerCase()
+                        .includes(searchStudentText.toLowerCase())
+                    )
+                    .map((student) => (
+                      <li
+                        key={student._id}
+                        className="autocomplete-suggestion"
+                        onClick={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            userId: student._id,
+                          }));
+                          setSearchStudentText(""); // 👈 Hide suggestions on select
+                        }}
+                      >
+                        {student.fullName}
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
 
             <input
               type="number"
@@ -277,7 +317,6 @@ const AdminPayment = () => {
                     const data = await res.json();
                     console.log("Payment saved:", data);
 
-                    // Reload or refetch updated payment list
                     resetForm();
                     window.location.reload();
                   } catch (err) {
